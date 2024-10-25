@@ -1,0 +1,110 @@
+#install.packages( "sdtm.oak")
+
+#install.packages("sdtm.oak", repos = "https://cloud.r-project.org/")
+
+# Name: CM domain
+#
+# Label: R program to create CM Domain
+#
+# Input raw data: cm_raw
+# study_controlled_terminology : study_ct
+#
+
+library(sdtm.oak)
+library(dplyr)
+
+
+# Read Specification
+
+study_ct <- read.csv("~/rpharma-2024-SDTM-workshop/datasets/sdtm_ct.csv")
+
+# Read in raw data
+
+cm_raw <- read.csv("~/rpharma-2024-SDTM-workshop/datasets/cm_raw_data_cdash.csv", 
+                   stringsAsFactors = FALSE,
+                   na.strings = "")
+
+# derive oak_id_vars
+cm_raw <- cm_raw %>%
+  generate_oak_id_vars(
+    pat_var = "PATNUM",
+    raw_src = "cm_raw"
+  )
+
+dm <- read.csv("~/rpharma-2024-SDTM-workshop/datasets/dm.csv")
+
+# Create CM domain. The first step in creating CM domain is to create the topic variable
+
+cm <-
+  # Derive topic variable
+  assign_no_ct(
+    raw_dat = cm_raw,
+    raw_var = "IT.CMTRT",
+    tgt_var = "CMTRT"
+  ) %>%
+  # Derive CMINDC using assign_no_ct, raw_var=IT.CMINDC,tgt_var=CMINDC
+  assign_no_ct(
+    raw_dat = cm_raw,
+    raw_var = "IT.CMINDC",
+    tgt_var = "CMINDC",
+    id_vars = oak_id_vars()
+  ) %>%
+  # Derive CMDOSTXT using condition_add and assign_no_ct, raw_var=IT.CMDSTXT,tgt_var=CMDOS
+  assign_no_ct(
+    raw_dat = condition_add(cm_raw, grepl("^-?\\d*(\\.\\d+)?(e[+-]?\\d+)?$", cm_raw$IT.CMDSTXT)),
+    raw_var = "IT.CMDSTXT",
+    tgt_var = "CMDOS",
+    id_vars = oak_id_vars()
+  ) %>%
+  # Derive qualifier CMDOSTXT using condition_add and assign_no_ct, raw_var=IT.CMDSTXT,tgt_var=CMDOSTXT
+  # Use grepl to check if it is character
+  assign_no_ct(
+    raw_dat = condition_add(cm_raw, grepl("[^0-9eE.-]", cm_raw$IT.CMDSTXT)),
+    raw_var = "IT.CMDSTXT",
+    tgt_var = "CMDOSTXT",
+    id_vars = oak_id_vars()
+  ) %>%
+  # Derive CMDOSU using assign_ct, raw_var=IT.CMDOSU,tgt_var=CMDOSU
+  assign_ct(
+    raw_dat = cm_raw,
+    raw_var = "IT.CMDOSU",
+    tgt_var = "CMDOSU",
+    ct_spec = study_ct,
+    ct_clst = "C71620",
+    id_vars = oak_id_vars()
+  ) %>%
+  # Derive CMDOSFRM using assign_ct, raw_var=IT.CMDOSFRM,tgt_var=CMDOSFRM
+  assign_ct(
+    raw_dat = cm_raw,
+    raw_var = "IT.CMDOSFRM",
+    tgt_var = "CMDOSFRM",
+    ct_spec = study_ct,
+    ct_clst = "C66726",
+    id_vars = oak_id_vars()
+  ) %>%
+  # Derive CMDOSFRQ using assign_ct, raw_var=IT.CMDOSFRQ,tgt_var=CMDOSFRQ
+  assign_ct(
+    raw_dat = cm_raw,
+    raw_var = "IT.CMDOSFRQ",
+    tgt_var = "CMDOSFRQ",
+    ct_spec = study_ct,
+    ct_clst = "C71113",
+    id_vars = oak_id_vars()
+  ) %>%
+  # Derive CMROUTE using assign_ct, raw_var=IT.CMROUTE,tgt_var=CMROUTE
+  assign_ct(
+    raw_dat = cm_raw,
+    raw_var = "IT.CMROUTE",
+    tgt_var = "CMROUTE",
+    ct_spec = study_ct,
+    ct_clst = "C66729",
+    id_vars = oak_id_vars()
+  ) %>%
+  # Derive CMSTDTC using assign_no_ct, raw_var=IT.CMSTDAT,tgt_var=CMSTDTC
+  assign_datetime(
+    raw_dat = cm_raw,
+    raw_var = "IT.CMSTDAT",
+    tgt_var = "CMSTDTC",
+    raw_fmt = c("d-m-y"),
+    raw_unk = c("UN", "UNK")
+  )

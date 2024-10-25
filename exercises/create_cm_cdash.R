@@ -16,11 +16,11 @@ library(dplyr)
 
 # Read Specification
 
-study_ct <- read.csv("~/rpharma-2024-SDTM-workshop/datasets/sdtm_ct.csv")
+study_ct <- read.csv("./datasets/sdtm_ct.csv")
 
 # Read in raw data
 
-cm_raw <- read.csv("~/rpharma-2024-SDTM-workshop/datasets/cm_raw_data_cdash.csv", 
+cm_raw <- read.csv("./datasets/cm_raw_data_cdash.csv", 
                    stringsAsFactors = FALSE,
                    na.strings = "")
 
@@ -31,40 +31,42 @@ cm_raw <- cm_raw %>%
     raw_src = "cm_raw"
   )
 
-dm <- read.csv("~/rpharma-2024-SDTM-workshop/datasets/dm.csv")
+dm <- read.csv("./datasets/dm.csv")
 
 # Create CM domain. The first step in creating CM domain is to create the topic variable
 
 cm <-
   # Derive topic variable
+  # Map CMTRT using assign_no_ct, raw_var=IT.CMTRT,tgt_var=CMTRT
   assign_no_ct(
     raw_dat = cm_raw,
     raw_var = "IT.CMTRT",
     tgt_var = "CMTRT"
   ) %>%
-  # Derive CMINDC using assign_no_ct, raw_var=IT.CMINDC,tgt_var=CMINDC
+  # Map CMINDC using assign_no_ct, raw_var=IT.CMINDC,tgt_var=CMINDC
   assign_no_ct(
     raw_dat = cm_raw,
     raw_var = "IT.CMINDC",
     tgt_var = "CMINDC",
     id_vars = oak_id_vars()
   ) %>%
-  # Derive CMDOSTXT using condition_add and assign_no_ct, raw_var=IT.CMDSTXT,tgt_var=CMDOS
+  # Map CMDOSTXT using condition_add and assign_no_ct, raw_var=IT.CMDSTXT,tgt_var=CMDOS
+  # If IT.CMDSTXT is numeric, map it to CMDOS
   assign_no_ct(
     raw_dat = condition_add(cm_raw, grepl("^-?\\d*(\\.\\d+)?(e[+-]?\\d+)?$", cm_raw$IT.CMDSTXT)),
     raw_var = "IT.CMDSTXT",
     tgt_var = "CMDOS",
     id_vars = oak_id_vars()
   ) %>%
-  # Derive qualifier CMDOSTXT using condition_add and assign_no_ct, raw_var=IT.CMDSTXT,tgt_var=CMDOSTXT
-  # Use grepl to check if it is character
+  # Map qualifier CMDOSTXT using condition_add & assign_no_ct, raw_var=IT.CMDSTXT,tgt_var=CMDOSTXT
+  # If IT.CMDSTXT is character, map it to CMDOSTXT
   assign_no_ct(
     raw_dat = condition_add(cm_raw, grepl("[^0-9eE.-]", cm_raw$IT.CMDSTXT)),
     raw_var = "IT.CMDSTXT",
     tgt_var = "CMDOSTXT",
     id_vars = oak_id_vars()
   ) %>%
-  # Derive CMDOSU using assign_ct, raw_var=IT.CMDOSU,tgt_var=CMDOSU
+  # Map CMDOSU and apply CT using assign_ct, raw_var=IT.CMDOSU,tgt_var=CMDOSU
   assign_ct(
     raw_dat = cm_raw,
     raw_var = "IT.CMDOSU",
@@ -73,7 +75,7 @@ cm <-
     ct_clst = "C71620",
     id_vars = oak_id_vars()
   ) %>%
-  # Derive CMDOSFRM using assign_ct, raw_var=IT.CMDOSFRM,tgt_var=CMDOSFRM
+  # Map CMDOSFRM and apply CT using assign_ct, raw_var=IT.CMDOSFRM,tgt_var=CMDOSFRM
   assign_ct(
     raw_dat = cm_raw,
     raw_var = "IT.CMDOSFRM",
@@ -82,7 +84,7 @@ cm <-
     ct_clst = "C66726",
     id_vars = oak_id_vars()
   ) %>%
-  # Derive CMDOSFRQ using assign_ct, raw_var=IT.CMDOSFRQ,tgt_var=CMDOSFRQ
+  # Map CMDOSFRQ using assign_ct, raw_var=IT.CMDOSFRQ,tgt_var=CMDOSFRQ
   assign_ct(
     raw_dat = cm_raw,
     raw_var = "IT.CMDOSFRQ",
@@ -91,7 +93,7 @@ cm <-
     ct_clst = "C71113",
     id_vars = oak_id_vars()
   ) %>%
-  # Derive CMROUTE using assign_ct, raw_var=IT.CMROUTE,tgt_var=CMROUTE
+  # Map CMROUTE using assign_ct, raw_var=IT.CMROUTE,tgt_var=CMROUTE
   assign_ct(
     raw_dat = cm_raw,
     raw_var = "IT.CMROUTE",
@@ -100,11 +102,19 @@ cm <-
     ct_clst = "C66729",
     id_vars = oak_id_vars()
   ) %>%
-  # Derive CMSTDTC using assign_no_ct, raw_var=IT.CMSTDAT,tgt_var=CMSTDTC
+  # Map CMSTDTC using assign_no_ct, raw_var=IT.CMSTDAT,tgt_var=CMSTDTC
   assign_datetime(
     raw_dat = cm_raw,
     raw_var = "IT.CMSTDAT",
     tgt_var = "CMSTDTC",
+    raw_fmt = c("d-m-y"),
+    raw_unk = c("UN", "UNK")
+  ) %>%
+  # Map CMENDTC using assign_no_ct, raw_var=IT.CMENDAT,tgt_var=CMENDTC
+  assign_datetime(
+    raw_dat = cm_raw,
+    raw_var = "IT.CMENDAT",
+    tgt_var = "CMENDTC",
     raw_fmt = c("d-m-y"),
     raw_unk = c("UN", "UNK")
   )
